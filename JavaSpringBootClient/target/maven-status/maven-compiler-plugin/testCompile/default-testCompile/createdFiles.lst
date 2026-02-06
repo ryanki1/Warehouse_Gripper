@@ -1,0 +1,4 @@
+com/robot/warehouse/service/WcfGripperServiceClientTest.class
+com/robot/warehouse/config/WcfGripperServiceClientTestConfig.class
+com/robot/warehouse/config/WcfGripperServiceClientTestConfig$1.class
+com/robot/warehouse/controller/WarehouseGripperControllerIntegrationTest.class

@@ -1,0 +1,19 @@
+application-*.properties
+
+# Build Output
+target/
+build/
+out/
+
+# IDE Files
+.idea/
+.settings/
+.classpath
+.project
+*.iml
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
