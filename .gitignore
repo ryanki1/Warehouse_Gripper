@@ -1,0 +1,30 @@
+# IDE & Editor
+.vscode/
+.idea/
+.vs/
+
+# Claude Code
+.claude/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Build Output
+bin/
+obj/
+target/
+build/
+out/
+
+# Logs
+*.log
+
+# Vendor/Third-party (DSGVO-sensibel)
+robotGripperBackend.Skeleton/
+Robot.Machine.Administration.Web.sln
+
+# Temporary files
+*.tmp
+*.temp
+bundle.js
