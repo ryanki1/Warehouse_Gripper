@@ -130,8 +130,14 @@ public class WarehouseGripperController {
     @GetMapping("/locations/available")
     @Operation(summary = "Get available locations", description = "Retrieve all unoccupied storage locations")
     public ResponseEntity<List<LocationResponse>> getAvailableLocations() {
-        log.info("GET /api/warehouse/locations/available");
-        List<LocationResponse> locations = wcfClient.getAvailableLocations();
-        return ResponseEntity.ok(locations);
+        try {
+            log.info("GET /api/warehouse/locations/available");
+            List<LocationResponse> locations = wcfClient.getAvailableLocations();
+            return ResponseEntity.ok(locations);
+        }
+        catch (Exception ex) {
+            throw new RuntimeException(ex.getMessage());
+        }
     }
+
 }

@@ -13,11 +13,18 @@ public class WcfServiceConfig {
     @Value("${wcf.service.url}")
     private String serviceUrl;
 
+    @Value("${wcf.service.wsdl}")
+    private String wsdlUrl;
+
     @Value("${wcf.service.timeout:30000}")
     private int timeout;
 
     public String getServiceUrl() {
         return serviceUrl;
+    }
+
+    public String getWsdlUrl() {
+        return wsdlUrl;
     }
 
     public int getTimeout() {

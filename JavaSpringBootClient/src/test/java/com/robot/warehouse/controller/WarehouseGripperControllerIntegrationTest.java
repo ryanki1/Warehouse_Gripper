@@ -21,7 +21,6 @@ import org.springframework.test.context.TestPropertySource;
 // import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessage;
 import org.springframework.test.web.servlet.MockMvc;
 
-// import com.robot.warehouse.config.WcfGripperServiceClientTestConfig;
 import com.robot.warehouse.dto.OperationResponse;
 import com.robot.warehouse.service.WcfGripperServiceClient;
 
@@ -38,20 +37,18 @@ import lombok.extern.slf4j.Slf4j;
 @SpringBootTest(
     properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.restclient.autoconfigure.RestClientAutoConfiguration,org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration",
-        "spring.main.allow-bean-definition-overriding=true",
-        "wcf.service.url=http://localhost:9999/mock",
+        "spring.main.allow-bean-definition-overriding=true"
     }
 )
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
     "resilience4j.circuitbreaker.instances.pick-gripper.failure-rate-threshold=100",
-    "resilience4j.circuitbreaker.instances.pick-gripper.minimum-number-of-calls=2",
+    "resilience4j.circuitbreaker.instances.pick-gripper.minimum-number-of-calls=5",
     "resilience4j.circuitbreaker.instances.pick-gripper.sliding-window-type=COUNT_BASED",
     "resilience4j.circuitbreaker.instances.pick-gripper.sliding-window-size=5",
     "resilience4j.circuitbreaker.instances.pick-gripper.wait-duration-in-open-state=30s",
     "logging.level.io.github.resilience4j=DEBUG"
 })
-// @Import(WcfGripperServiceClientTestConfig.class) 
 @Slf4j
 class WarehouseGripperControllerIntegrationTest { // extends ContractVerifierMessage { // TODO [kr] ContractVerifierTest package nicht verfügbar
     @Autowired

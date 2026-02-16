@@ -28,3 +28,6 @@ Robot.Machine.Administration.Web.sln
 *.tmp
 *.temp
 bundle.js
+
+# Session Notes
+DSGVO-Setup-Session.md

@@ -13,7 +13,7 @@ public class GripperClientApplication {
     public static void main(String[] args) {
         SpringApplication.run(GripperClientApplication.class, args);
         System.out.println("========================================================");
-        System.out.println("robot Warehouse Gripper Client Started");
+        System.out.println("Robot Warehouse Gripper Client Started");
         System.out.println("========================================================");
         System.out.println("REST API:     http://localhost:8081/api/warehouse");
         System.out.println("Swagger UI:   http://localhost:8081/swagger-ui.html");
