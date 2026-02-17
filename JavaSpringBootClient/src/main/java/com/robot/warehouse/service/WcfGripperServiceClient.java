@@ -520,7 +520,6 @@ public class WcfGripperServiceClient {
      * Health check
      */
     public boolean isServiceHealthy() {
-        /* GENERATED CODE - Uncomment after WSDL generation:
         try {
             IWarehouseGripperService port = getServicePort();
             return port.isServiceHealthy();
@@ -528,11 +527,7 @@ public class WcfGripperServiceClient {
             log.error("Health check failed", e);
             return false;
         }
-        */
-        return true; // MOCK
     }
-
-    // MAPPING METHODS - Uncomment after WSDL generation
 
     /**
      * Helper method to extract value from JAXBElement (handles nulls)

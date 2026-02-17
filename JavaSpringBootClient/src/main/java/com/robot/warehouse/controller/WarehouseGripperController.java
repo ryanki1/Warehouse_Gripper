@@ -16,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * REST API Controller for Warehouse Gripper Operations
@@ -53,10 +55,10 @@ public class WarehouseGripperController {
 
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Check if WCF service is healthy")
-    public ResponseEntity<Boolean> healthCheck() {
+    public ResponseEntity<Map<String, Boolean>> healthCheck() {
         log.info("Health check requested");
         boolean healthy = wcfClient.isServiceHealthy();
-        return ResponseEntity.ok(healthy);
+        return ResponseEntity.ok(Map.of("healthy", healthy));
     }
 
     @CircuitBreaker(name="get-all-grippers")
