@@ -193,32 +193,6 @@ public class WcfGripperServiceClient {
             throw new RuntimeException("Failed to get gripper status", e);
         }
 
-        // try {
-        //     // TEMPORARY MOCK DATA - Remove after WSDL generation
-        //     GripperStatusResponse response = GripperStatusResponse.builder()
-        //             .gripperId(gripperId)
-        //             .state("Idle")
-        //             .positionX(0.0)
-        //             .positionY(0.0)
-        //             .positionZ(0.0)
-        //             .hasLoadCarrier(false)
-        //             .isEnabled(true)
-        //             .hasError(false)
-        //             .lastUpdated(LocalDateTime.now())
-        //             .build();
-
-        //     sample.stop(getGripperStatusSuccessTimer);
-        //     getGripperStatusSuccessCounter.increment();
-
-        //     return response;
-
-        // } catch (Exception e) {
-        //     sample.stop(getGripperStatusFailureTimer);
-        //     getGripperStatusFailureCounter.increment();
-
-        //     log.error("Failed to get Gripper status", e);
-        //     throw new RuntimeException("Failed to get Gripper status", e);
-        // }
     }
 
     /**
@@ -252,25 +226,6 @@ public class WcfGripperServiceClient {
             throw new RuntimeException("Failed to get all grippers", e);
         }
 
-        // try {
-        //     // TEMPORARY MOCK DATA
-        //     List<GripperStatusResponse> response = List.of(
-        //         GripperStatusResponse.builder().gripperId(1).state("Idle").build(),
-        //         GripperStatusResponse.builder().gripperId(2).state("Idle").build()
-        //     );
-
-        //     sample.stop(getAllGrippersSuccessTimer);
-        //     getAllGrippersSuccessCounter.increment();
-
-        //     return response;
-
-        // } catch (Exception e) {
-        //     sample.stop(getAllGrippersFailureTimer);
-        //     getAllGrippersFailureCounter.increment();
-
-        //     log.error("Failed to get all grippers", e);
-        //     throw new RuntimeException("Failed to get all grippers", e);
-        // }
     }
 
     /**
@@ -300,26 +255,6 @@ public class WcfGripperServiceClient {
             throw new RuntimeException("Failed to move gripper", e);
         }
 
-        // try {
-        //     // TEMPORARY MOCK DATA
-        //     OperationResponse response = OperationResponse.builder()
-        //             .success(true)
-        //             .message("Move command sent (MOCK)")
-        //             .timestamp(LocalDateTime.now())
-        //             .build();
-
-        //     sample.stop(moveGripperSuccessTimer);
-        //     moveGripperSuccessCounter.increment();
-
-        //     return response;
-
-        // } catch (Exception e) {
-        //     sample.stop(moveGripperFailureTimer);
-        //     moveGripperFailureCounter.increment();
-
-        //     log.error("Failed to move gripper", e);
-        //     throw new RuntimeException("Failed to move gripper", e);
-        // }
     }
 
     /**
@@ -330,41 +265,27 @@ public class WcfGripperServiceClient {
 
         Timer.Sample sample = Timer.start(registry);
 
-        /* GENERATED CODE - Uncomment after WSDL generation:
         try {
             IWarehouseGripperService port = getServicePort();
             OperationResultDto wcfResult = port.pickLoadCarrier(gripperId, locationId);
 
-            return mapToOperationResponse(wcfResult);
-        } catch (ServiceFault_Exception e) {
-            log.error("WCF Service Fault: {}", e.getFaultInfo().getErrorMessage());
-            throw new RuntimeException("Failed to pick load carrier: " + e.getFaultInfo().getErrorMessage());
-        } catch (Exception e) {
-            log.error("Failed to pick load carrier", e);
-            throw new RuntimeException("Failed to pick load carrier", e);
-        }
-        */
-
-        try {
-            // TEMPORARY MOCK DATA
-            OperationResponse response = OperationResponse.builder()
-                    .success(true)
-                    .message("Pick command sent (MOCK)")
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
             sample.stop(pickLoadCarrierSuccessTimer);
             pickLoadCarrierSuccessCounter.increment();
 
-            return response;
-
+            return mapToOperationResponse(wcfResult);
+        } catch (IWarehouseGripperServicePickLoadCarrierServiceFaultFaultFaultMessage e) {
+            sample.stop(pickLoadCarrierFailureTimer);
+            pickLoadCarrierFailureCounter.increment();
+            String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
+            log.error("WCF Service Fault: {}", errorMsg);
+            throw new RuntimeException("Failed to pick load carrier: " + errorMsg);
         } catch (Exception e) {
             sample.stop(pickLoadCarrierFailureTimer);
             pickLoadCarrierFailureCounter.increment();
-
             log.error("Failed to pick load carrier", e);
             throw new RuntimeException("Failed to pick load carrier", e);
         }
+
     }
 
     /**
@@ -380,11 +301,19 @@ public class WcfGripperServiceClient {
             IWarehouseGripperService port = getServicePort();
             OperationResultDto wcfResult = port.placeLoadCarrier(gripperId, locationId);
 
+            sample.stop(placeLoadCarrierSuccessTimer);
+            placeLoadCarrierSuccessCounter.increment();
+
             return mapToOperationResponse(wcfResult);
-        } catch (ServiceFault_Exception e) {
-            log.error("WCF Service Fault: {}", e.getFaultInfo().getErrorMessage());
-            throw new RuntimeException("Failed to place load carrier: " + e.getFaultInfo().getErrorMessage());
+        } catch (IWarehouseGripperServicePlaceLoadCarrierServiceFaultFaultFaultMessage e) {
+            sample.stop(placeLoadCarrierFailureTimer);
+            placeLoadCarrierFailureCounter.increment();
+            String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
+            log.error("WCF Service Fault: {}", errorMsg);
+            throw new RuntimeException("Failed to place load carrier: " + errorMsg);
         } catch (Exception e) {
+            sample.stop(placeLoadCarrierFailureTimer);
+            placeLoadCarrierFailureCounter.increment();
             log.error("Failed to place load carrier", e);
             throw new RuntimeException("Failed to place load carrier", e);
         }

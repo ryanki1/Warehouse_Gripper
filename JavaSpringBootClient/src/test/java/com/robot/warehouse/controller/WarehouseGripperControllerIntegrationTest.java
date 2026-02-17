@@ -75,7 +75,7 @@ class WarehouseGripperControllerIntegrationTest { // extends ContractVerifierMes
     void testCircuitBreakerOpensAfterFailures() {
         OperationResponse response = new OperationResponse();
         response.setSuccess(false);
-        response.setErrorCode("LOCATION_EMPTY");
+        response.setErrorCode("LOCATION_IS_EMPTY");
         response.setMessage("Location 99 is empty");
         when(wcfClient.pickLoadCarrier(1, 99))
             .thenReturn(response);
@@ -103,7 +103,7 @@ class WarehouseGripperControllerIntegrationTest { // extends ContractVerifierMes
         // Arrange
         OperationResponse response = new OperationResponse();
         response.setSuccess(false);
-        response.setErrorCode("LOCATION_EMPTY");
+        response.setErrorCode("LOCATION_IS_EMPTY");
         response.setMessage("Location 99 is empty");
 
         when(wcfClient.pickLoadCarrier(1, 99))
@@ -116,7 +116,7 @@ class WarehouseGripperControllerIntegrationTest { // extends ContractVerifierMes
             // Assert
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.success").value(false))
-                    .andExpect(jsonPath("$.errorCode").value("LOCATION_EMPTY"));
+                    .andExpect(jsonPath("$.errorCode").value("LOCATION_IS_EMPTY"));
             verify(wcfClient, times(1)).pickLoadCarrier(1, 99);
         } catch (Exception e) {
             e.printStackTrace();

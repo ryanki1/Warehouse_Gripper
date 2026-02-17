@@ -34,21 +34,30 @@ public class WarehouseGripperController {
     private final WcfGripperServiceClient wcfClient;
 
     @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> pickFallback(int id, int locationId, Throwable ex) {
+    private ResponseEntity<OperationResponse> pickFallback(int gripperId, int locationId, Throwable ex) {
         if (ex instanceof CallNotPermittedException) {
-            log.warn("Circuit Breaker 'pick-gripper' is OPEN - rejecting call for Gripper {} at Location {}", id, locationId);
+            log.warn("Circuit Breaker 'pick-gripper' is OPEN - rejecting call for Gripper {} at Location {}", gripperId, locationId);
             OperationResponse error = new OperationResponse();
             error.setErrorCode("SERVICE_UNAVAILABLE");
             error.setMessage("Pick Service is unavailable. Please try later.");
             error.setSuccess(false);
+            error.setTimestamp(java.time.LocalDateTime.now());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
         } else {
-            log.warn("Circuit Breaker 'pick-gripper' fallback triggered for Gripper {} at Location {}: {}", 
-                    id, locationId, ex.getMessage());
+            log.warn("Circuit Breaker 'pick-gripper' fallback triggered for Gripper {} for Operation {}: {}",
+                    gripperId, locationId, ex.getMessage());
             OperationResponse error = new OperationResponse();
-            error.setErrorCode("LOAD_CARRIER");
-            error.setMessage("Location is empty");
+
+            // Extract error code if available
+            if (ex instanceof OperationResponseException) {
+                error.setErrorCode(((OperationResponseException) ex).getErrorCode());
+            } else {
+                error.setErrorCode("OPERATION_FAILED");
+            }
+
+            error.setMessage(ex.getMessage());
             error.setSuccess(false);
+            error.setTimestamp(java.time.LocalDateTime.now());
             return ResponseEntity.badRequest().body(error);
         }
     }
@@ -103,7 +112,7 @@ public class WarehouseGripperController {
         if (!result.isSuccess()) {
             throw new OperationResponseException(result.getErrorCode(), result.getMessage());
         }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(result); 
     }
 
     @CircuitBreaker(name="place-gripper")
@@ -132,14 +141,9 @@ public class WarehouseGripperController {
     @GetMapping("/locations/available")
     @Operation(summary = "Get available locations", description = "Retrieve all unoccupied storage locations")
     public ResponseEntity<List<LocationResponse>> getAvailableLocations() {
-        try {
-            log.info("GET /api/warehouse/locations/available");
-            List<LocationResponse> locations = wcfClient.getAvailableLocations();
-            return ResponseEntity.ok(locations);
-        }
-        catch (Exception ex) {
-            throw new RuntimeException(ex.getMessage());
-        }
+        log.info("GET /api/warehouse/locations/available");
+        List<LocationResponse> locations = wcfClient.getAvailableLocations();
+        return ResponseEntity.ok(locations);
     }
 
 }
