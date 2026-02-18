@@ -296,7 +296,6 @@ public class WcfGripperServiceClient {
 
         Timer.Sample sample = Timer.start(registry);
 
-        /* GENERATED CODE - Uncomment after WSDL generation:
         try {
             IWarehouseGripperService port = getServicePort();
             OperationResultDto wcfResult = port.placeLoadCarrier(gripperId, locationId);
@@ -317,28 +316,7 @@ public class WcfGripperServiceClient {
             log.error("Failed to place load carrier", e);
             throw new RuntimeException("Failed to place load carrier", e);
         }
-        */
 
-        try {
-            // TEMPORARY MOCK DATA
-            OperationResponse response = OperationResponse.builder()
-                    .success(true)
-                    .message("Place command sent (MOCK)")
-                    .timestamp(LocalDateTime.now())
-                    .build();
-
-            sample.stop(placeLoadCarrierSuccessTimer);
-            placeLoadCarrierSuccessCounter.increment();
-
-            return response;
-
-        } catch (Exception e) {
-            sample.stop(placeLoadCarrierFailureTimer);
-            placeLoadCarrierFailureCounter.increment();
-
-            log.error("Failed to place load carrier", e);
-            throw new RuntimeException("Failed to place load carrier", e);
-        }
     }
 
     /**

@@ -98,6 +98,9 @@ public class WarehouseGripperController {
             @RequestParam double z) {
         log.info("POST /api/warehouse/grippers/{}/move - Position: ({}, {}, {})", id, x, y, z);
         OperationResponse result = wcfClient.moveGripper(id, x, y, z);
+        if (!result.isSuccess()) {
+            throw new OperationResponseException(result.getErrorCode(), result.getMessage());
+        }
         return ResponseEntity.ok(result);
     }
 
