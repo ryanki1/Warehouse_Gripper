@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.robot.warehouse.dto.ErrorDetails;
+import com.robot.warehouse.dto.OperationResponse;
 import com.robot.warehouse.exception.OperationResponseException;
 
 import lombok.extern.slf4j.Slf4j;
@@ -22,16 +23,17 @@ public class GlobalExceptionHandler {
      * Handle custom OperationResponseException (business logic errors)
      */
     @ExceptionHandler(OperationResponseException.class)
-    public ResponseEntity<ErrorDetails> handleOperationResponseException(OperationResponseException ex) {
+    public ResponseEntity<OperationResponse> handleOperationResponseException(OperationResponseException ex) {
         log.warn("Operation failed: {} - {}", ex.getErrorCode(), ex.getMessage());
 
-        ErrorDetails error = new ErrorDetails();
+        OperationResponse error = new OperationResponse();
         error.setSuccess(false);
         error.setMessage(ex.getMessage());
         error.setErrorCode(ex.getErrorCode());
+        error.setStackTrace(ex.getWcfStackTrace());
         error.setTimestamp(java.time.LocalDateTime.now());
 
-        if (error.getErrorCode() == "SERVICE_UNAVAILABLE") {
+        if (error.getErrorCode().equals("SERVICE_UNAVAILABLE")) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
         } else {
             return ResponseEntity.badRequest().body(error);

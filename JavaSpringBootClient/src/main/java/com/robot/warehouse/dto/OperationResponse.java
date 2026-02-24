@@ -19,5 +19,7 @@ public class OperationResponse {
     private Integer operationId;
     private String message;
     private String errorCode;
+    private String stackTrace;
     private LocalDateTime timestamp;
+    private int status;
 }

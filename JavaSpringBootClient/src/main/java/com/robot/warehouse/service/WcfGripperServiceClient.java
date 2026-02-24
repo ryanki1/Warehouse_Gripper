@@ -2,6 +2,7 @@ package com.robot.warehouse.service;
 
 import com.robot.warehouse.config.WcfServiceConfig;
 import com.robot.warehouse.dto.*;
+import com.robot.warehouse.exception.OperationResponseException;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.MDC;
 
 import com.robot.warehouse.wcf.generated.*;
+
 import jakarta.xml.ws.BindingProvider;
 import jakarta.xml.bind.JAXB;
 import jakarta.xml.bind.JAXBElement;
@@ -245,14 +247,17 @@ public class WcfGripperServiceClient {
         } catch (IWarehouseGripperServiceMoveGripperServiceFaultFaultFaultMessage e) {
             sample.stop(moveGripperFailureTimer);
             moveGripperFailureCounter.increment();
+
+            String errorCode = unwrapJAXBElement(e.getFaultInfo().getErrorCode());
             String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
-            log.error("WCF Service Fault: {}", errorMsg);
-            throw new RuntimeException("Failed to move gripper: " + errorMsg);
+            String stackTrace = unwrapJAXBElement(e.getFaultInfo().getStackTrace());
+
+            throw new OperationResponseException(errorCode, stackTrace, errorMsg);
         } catch (Exception e) {
             sample.stop(moveGripperFailureTimer);
             moveGripperFailureCounter.increment();
-            log.error("Failed to move gripper", e);
-            throw new RuntimeException("Failed to move gripper", e);
+
+            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to move gripper");
         }
 
     }
@@ -276,14 +281,16 @@ public class WcfGripperServiceClient {
         } catch (IWarehouseGripperServicePickLoadCarrierServiceFaultFaultFaultMessage e) {
             sample.stop(pickLoadCarrierFailureTimer);
             pickLoadCarrierFailureCounter.increment();
+
+            String errorCode = unwrapJAXBElement(e.getFaultInfo().getErrorCode());
             String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
-            log.error("WCF Service Fault: {}", errorMsg);
-            throw new RuntimeException("Failed to pick load carrier: " + errorMsg);
+            String stackTrace = unwrapJAXBElement(e.getFaultInfo().getStackTrace());
+
+            throw new OperationResponseException(errorCode, stackTrace, errorMsg);
         } catch (Exception e) {
             sample.stop(pickLoadCarrierFailureTimer);
             pickLoadCarrierFailureCounter.increment();
-            log.error("Failed to pick load carrier", e);
-            throw new RuntimeException("Failed to pick load carrier", e);
+            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to pick load carrier");
         }
 
     }
@@ -307,14 +314,16 @@ public class WcfGripperServiceClient {
         } catch (IWarehouseGripperServicePlaceLoadCarrierServiceFaultFaultFaultMessage e) {
             sample.stop(placeLoadCarrierFailureTimer);
             placeLoadCarrierFailureCounter.increment();
+
+            String errorCode = unwrapJAXBElement(e.getFaultInfo().getErrorCode());
             String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
-            log.error("WCF Service Fault: {}", errorMsg);
-            throw new RuntimeException("Failed to place load carrier: " + errorMsg);
+            String stackTrace = unwrapJAXBElement(e.getFaultInfo().getStackTrace());
+
+            throw new OperationResponseException(errorCode, stackTrace, errorMsg);
         } catch (Exception e) {
             sample.stop(placeLoadCarrierFailureTimer);
             placeLoadCarrierFailureCounter.increment();
-            log.error("Failed to place load carrier", e);
-            throw new RuntimeException("Failed to place load carrier", e);
+            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to place load carrier");
         }
 
     }
@@ -327,48 +336,43 @@ public class WcfGripperServiceClient {
 
         Timer.Sample sample = Timer.start(registry);
 
-        // try {
-        //     IWarehouseGripperService port = getServicePort();
-
-        //     OperationRequestDto wcfRequest = new OperationRequestDto();
-        //     wcfRequest.setGripperId(request.getGripperId());
-        //     wcfRequest.setOperationType(request.getOperationType());
-        //     wcfRequest.setSourceLocationId(request.getSourceLocationId());
-        //     wcfRequest.setTargetLocationId(request.getTargetLocationId());
-        //     wcfRequest.setLoadCarrierId(request.getLoadCarrierId());
-        //     wcfRequest.setPriority(request.getPriority());
-
-        //     OperationResultDto wcfResult = port.createOperation(wcfRequest);
-        //     return mapToOperationResponse(wcfResult);
-        // } catch (ServiceFault_Exception e) {
-        //     log.error("WCF Service Fault: {}", e.getFaultInfo().getErrorMessage());
-        //     throw new RuntimeException("Failed to create operation: " + e.getFaultInfo().getErrorMessage());
-        // } catch (Exception e) {
-        //     log.error("Failed to create operation", e);
-        //     throw new RuntimeException("Failed to create operation", e);
-        // }
-
         try {
-            // TEMPORARY MOCK DATA
-            OperationResponse response = OperationResponse.builder()
-                    .success(true)
-                    .operationId(123)
-                    .message("Operation created (MOCK)")
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            IWarehouseGripperService port = getServicePort();
+            ObjectFactory factory = new ObjectFactory();
+
+            OperationRequestDto wcfRequest = factory.createOperationRequestDto();
+            wcfRequest.setGripperId(request.getGripperId());
+            wcfRequest.setOperationType(factory.createOperationRequestDtoOperationType(request.getOperationType()));
+            wcfRequest.setSourceLocationId(factory.createOperationRequestDtoSourceLocationId(request.getSourceLocationId()));
+            wcfRequest.setTargetLocationId(factory.createOperationRequestDtoTargetLocationId(request.getTargetLocationId()));
+            wcfRequest.setLoadCarrierId(factory.createOperationRequestDtoLoadCarrierId(request.getLoadCarrierId()));
+            wcfRequest.setPriority(factory.createOperationRequestDtoPriority(request.getPriority()));
+
+            OperationResultDto wcfResult = port.createOperation(wcfRequest);
 
             sample.stop(createOperationSuccessTimer);
             createOperationSuccessCounter.increment();
 
-            return response;
-
-        } catch (Exception e) {
+            return mapToOperationResponse(wcfResult);
+        }
+        catch (IWarehouseGripperServiceCreateOperationServiceFaultFaultFaultMessage e) {
             sample.stop(createOperationFailureTimer);
             createOperationFailureCounter.increment();
-
-            log.error("Failed to create operation", e);
+            String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
+            log.error("✅ SOAP Fault caught - ErrorCode: {}, Message: {}",
+                unwrapJAXBElement(e.getFaultInfo().getErrorCode()), errorMsg);
+            throw new OperationResponseException(
+                unwrapJAXBElement(e.getFaultInfo().getErrorCode()),
+                unwrapJAXBElement(e.getFaultInfo().getStackTrace()),
+                unwrapJAXBElement(e.getFaultInfo().getErrorMessage())
+            );
+        }
+        catch (Exception e) {
+            sample.stop(createOperationFailureTimer);
+            createOperationFailureCounter.increment();
             throw new RuntimeException("Failed to create operation", e);
         }
+
     }
 
     /**
@@ -441,6 +445,24 @@ public class WcfGripperServiceClient {
      */
     private <T> T unwrapJAXBElement(JAXBElement<T> element) {
         return element != null ? element.getValue() : null;
+    }
+
+    /**
+     * Helper method to wrap String values as JAXBElement (for WCF requests)
+     */
+    private JAXBElement<String> wrapString(String value) {
+        if (value == null) return null;
+        return new JAXBElement<>(new QName("http://robot.warehouse.gripper/2024", "string"),
+                                 String.class, value);
+    }
+
+    /**
+     * Helper method to wrap Integer values as JAXBElement (for WCF requests)
+     */
+    private JAXBElement<Integer> wrapInteger(Integer value) {
+        if (value == null) return null;
+        return new JAXBElement<>(new QName("http://robot.warehouse.gripper/2024", "int"),
+                                 Integer.class, value);
     }
     
     private GripperStatusResponse mapToGripperStatusResponse(GripperStatusDto dto) {
