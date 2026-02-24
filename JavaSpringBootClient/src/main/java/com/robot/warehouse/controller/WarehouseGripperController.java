@@ -56,17 +56,17 @@ public class WarehouseGripperController {
     // --- Specific Fallback Methods (delegate to generic handler) ---
 
     @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> pickPlaceOperationFallback(int gripperId, int locationId, Throwable ex) {
+    private ResponseEntity<OperationResponse> pickPlaceOperationFallback(int gripperId, int locationId, Throwable ex) throws Exception {
         return operationResponseFallback(ex, String.format("Gripper %d at Location %d", gripperId, locationId));
     }
 
     @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> moveGripperFallback(int id, double x, double y, double z, Throwable ex) {
+    private ResponseEntity<OperationResponse> moveGripperFallback(int id, double x, double y, double z, Throwable ex) throws Exception {
         return operationResponseFallback(ex, String.format("Move Gripper %d to (%.2f, %.2f, %.2f)", id, x, y, z));
     }
 
     @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> createOperationFallback(OperationRequest request, Throwable ex) {
+    private ResponseEntity<OperationResponse> createOperationFallback(OperationRequest request, Throwable ex) throws Exception {
         return operationResponseFallback(ex, String.format("Create Operation: Type=%s, Gripper=%d",
             request.getOperationType(), request.getGripperId()));
     }

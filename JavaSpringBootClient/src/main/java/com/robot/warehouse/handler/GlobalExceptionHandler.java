@@ -5,7 +5,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.robot.warehouse.dto.ErrorDetails;
 import com.robot.warehouse.dto.OperationResponse;
 import com.robot.warehouse.exception.OperationResponseException;
 
@@ -44,10 +43,10 @@ public class GlobalExceptionHandler {
      * Handle generic RuntimeException (WCF faults, unexpected errors)
      */
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorDetails> handleRuntimeException(RuntimeException ex) {
+    public ResponseEntity<OperationResponse> handleRuntimeException(RuntimeException ex) {
         log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
 
-        ErrorDetails error = ErrorDetails.builder()
+        OperationResponse error = OperationResponse.builder()
                 .success(false)
                 .message(ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred")
                 .errorCode("INTERNAL_ERROR")
