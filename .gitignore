@@ -19,6 +19,7 @@ out/
 
 # Logs
 *.log
+warehouse-gripper.*json
 
 # Vendor/Third-party (DSGVO-sensibel)
 robotGripperBackend.Skeleton/
@@ -28,6 +29,7 @@ Robot.Machine.Administration.Web.sln
 *.tmp
 *.temp
 bundle.js
+*.bak
 
 # Session Notes
 DSGVO-Setup-Session.md
