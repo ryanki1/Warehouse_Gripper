@@ -4,14 +4,11 @@ import com.robot.warehouse.dto.*;
 import com.robot.warehouse.exception.OperationResponseException;
 import com.robot.warehouse.service.WcfGripperServiceClient;
 
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,74 +30,6 @@ public class WarehouseGripperController {
 
     private final WcfGripperServiceClient wcfClient;
 
-    /**
-     * Fallback for operations returning OperationResponse (pick/place/move/create)
-     * @throws Exception 
-     */
-    @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> operationResponseFallback(Throwable ex, String context) throws Exception {
-        if (ex instanceof CallNotPermittedException) {
-            log.warn("Circuit Breaker is OPEN - {}", context);
-            OperationResponse error = new OperationResponse();
-            error.setErrorCode("SERVICE_UNAVAILABLE");
-            error.setMessage("Service is unavailable. Please try later.");
-            error.setSuccess(false);
-            error.setTimestamp(java.time.LocalDateTime.now());
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
-        } else {
-            log.warn("Circuit Breaker fallback - {}: {}", context, ex.getMessage());
-            throw new Exception(ex);
-        }
-    }
-
-    // --- Specific Fallback Methods (delegate to generic handler) ---
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> pickPlaceOperationFallback(int gripperId, int locationId, Throwable ex) throws Exception {
-        return operationResponseFallback(ex, String.format("Gripper %d at Location %d", gripperId, locationId));
-    }
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> moveGripperFallback(int id, double x, double y, double z, Throwable ex) throws Exception {
-        return operationResponseFallback(ex, String.format("Move Gripper %d to (%.2f, %.2f, %.2f)", id, x, y, z));
-    }
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<OperationResponse> createOperationFallback(OperationRequest request, Throwable ex) throws Exception {
-        return operationResponseFallback(ex, String.format("Create Operation: Type=%s, Gripper=%d",
-            request.getOperationType(), request.getGripperId()));
-    }
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<GripperStatusResponse> getByIdFallback(int id, Throwable ex) {
-        if (ex instanceof CallNotPermittedException) {
-            log.warn("Circuit Breaker is OPEN - Get Gripper {}", id);
-        } else {
-            log.warn("Circuit Breaker fallback - Get Gripper {}: {}", id, ex.getMessage());
-        }
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
-    }
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<List<GripperStatusResponse>> getAllGrippersFallback(Throwable ex) {
-        if (ex instanceof CallNotPermittedException) {
-            log.warn("Circuit Breaker is OPEN - Get All Grippers");
-        } else {
-            log.warn("Circuit Breaker fallback - Get All Grippers: {}", ex.getMessage());
-        }
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(List.of());
-    }
-
-    @SuppressWarnings("unused")
-    private ResponseEntity<List<LocationResponse>> getAvailableLocationsFallback(Throwable ex) {
-        if (ex instanceof CallNotPermittedException) {
-            log.warn("Circuit Breaker is OPEN - Get Available Locations");
-        } else {
-            log.warn("Circuit Breaker fallback - Get Available Locations: {}", ex.getMessage());
-        }
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(List.of());
-    }
-
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Check if WCF service is healthy")
     public ResponseEntity<Map<String, Boolean>> healthCheck() {
@@ -109,7 +38,6 @@ public class WarehouseGripperController {
         return ResponseEntity.ok(Map.of("healthy", healthy));
     }
 
-    @CircuitBreaker(name="get-all-grippers", fallbackMethod = "getAllGrippersFallback")
     @GetMapping("/grippers")
     @Operation(summary = "Get all grippers", description = "Retrieve status of all grippers")
     public ResponseEntity<List<GripperStatusResponse>> getAllGrippers() {
@@ -118,16 +46,14 @@ public class WarehouseGripperController {
         return ResponseEntity.ok(grippers);
     }
 
-    @CircuitBreaker(name="get-gripper-by-id", fallbackMethod = "getByIdFallback")
     @GetMapping("/grippers/{id}")
     @Operation(summary = "Get gripper by ID", description = "Retrieve status of a specific gripper")
-    public ResponseEntity<GripperStatusResponse> getGripperById(@PathVariable int id) {
+    public ResponseEntity<GripperStatusResponse> getGripperById(@PathVariable int id) throws Exception {
         log.info("GET /api/warehouse/grippers/{}", id);
         GripperStatusResponse gripper = wcfClient.getGripperStatus(id);
         return ResponseEntity.ok(gripper);
     }
 
-    @CircuitBreaker(name="move-gripper", fallbackMethod = "moveGripperFallback")
     @PostMapping("/grippers/{id}/move")
     @Operation(summary = "Move gripper", description = "Move gripper to specified position")
     public ResponseEntity<OperationResponse> moveGripper(
@@ -143,7 +69,6 @@ public class WarehouseGripperController {
         return ResponseEntity.ok(result);
     }
 
-    @CircuitBreaker(name="pick-gripper", fallbackMethod = "pickPlaceOperationFallback")
     @PostMapping("/grippers/{id}/pick")
     @Operation(summary = "Pick load carrier", description = "Command gripper to pick load carrier from location")
     public ResponseEntity<OperationResponse> pickLoadCarrier(
@@ -157,7 +82,6 @@ public class WarehouseGripperController {
         return ResponseEntity.ok(result);
     }
 
-    @CircuitBreaker(name="place-gripper", fallbackMethod = "pickPlaceOperationFallback")
     @PostMapping("/grippers/{id}/place")
     @Operation(summary = "Place load carrier", description = "Command gripper to place load carrier at location")
     public ResponseEntity<OperationResponse> placeLoadCarrier(
@@ -171,21 +95,20 @@ public class WarehouseGripperController {
         return ResponseEntity.ok(result);
     }
 
-    @CircuitBreaker(name="create-operation", fallbackMethod = "createOperationFallback")
     @PostMapping("/operations")
     @Operation(summary = "Create operation", description = "Create a new warehouse operation (queued)")
     public ResponseEntity<OperationResponse> createOperation(
-            @RequestBody OperationRequest request) throws Exception {
-        log.info("POST /api/warehouse/operations - Type: {}, Gripper: {}",
-                request.getOperationType(), request.getGripperId());
-        OperationResponse result = wcfClient.createOperation(request);
-        if (!result.isSuccess()) {
-            throw new OperationResponseException(result.getErrorCode(), result.getMessage());
-        }
-        return ResponseEntity.ok(result);
+        @RequestBody OperationRequest request) throws Exception {
+            try {
+                log.info("POST /api/warehouse/operations - Type: {}, Gripper: {}",
+                        request.getOperationType(), request.getGripperId());
+                OperationResponse result = wcfClient.createOperation(request);
+                return ResponseEntity.ok(result);
+            } catch (Exception ex) {
+                throw ex;
+            }
     }
 
-    @CircuitBreaker(name="get-available-locations", fallbackMethod = "getAvailableLocationsFallback")
     @GetMapping("/locations/available")
     @Operation(summary = "Get available locations", description = "Retrieve all unoccupied storage locations")
     public ResponseEntity<List<LocationResponse>> getAvailableLocations() {

@@ -4,10 +4,15 @@ import com.robot.warehouse.config.WcfServiceConfig;
 import com.robot.warehouse.dto.*;
 import com.robot.warehouse.exception.OperationResponseException;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import org.slf4j.MDC;
@@ -17,6 +22,7 @@ import com.robot.warehouse.wcf.generated.*;
 import jakarta.xml.ws.BindingProvider;
 import jakarta.xml.bind.JAXB;
 import jakarta.xml.bind.JAXBElement;
+
 import javax.xml.namespace.QName;
 import java.net.URL;
 import java.util.stream.Collectors;
@@ -146,29 +152,115 @@ public class WcfGripperServiceClient {
                 "operation", "getAvailableLocations", "status", "failure");
     }
 
-     private IWarehouseGripperService getServicePort() {
-         try {
-             URL wsdlUrl = new URL(config.getWsdlUrl());
-             QName serviceName = new QName(
-                 "http://tempuri.org/",
-                 "WarehouseGripperService"
-             );
+        /**
+     * Fallback helper - throws appropriate exception based on error type
+     * @throws Exception
+     */
+    @SuppressWarnings("unused")
+    private OperationResponse operationResponseFallback(Throwable ex, String context) throws Exception {
+        if (ex instanceof CallNotPermittedException) {
+            log.warn("Circuit Breaker is OPEN - {}", context);
+            OperationResponse error = new OperationResponse();
+            error.setErrorCode("SERVICE_UNAVAILABLE");
+            error.setMessage("Service is unavailable. Please try later.");
+            throw new OperationResponseException(error.getErrorCode(), error.getMessage());
+        } else if (ex instanceof OperationResponseException) {
+            // Business Fehler (GRIPPER_NOT_FOUND, etc.) → Original-Fehler behalten!
+            log.warn("Circuit Breaker fallback - Business error: {}", ex.getMessage());
+            throw (OperationResponseException) ex;
+        } else {
+            log.error("Circuit Breaker fallback - Unexpected error: {}: {}", context, ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+    }
+
+    // --- Specific Fallback Methods (delegate to generic handler) ---
+
+    @SuppressWarnings("unused")
+    private OperationResponse pickPlaceOperationFallback(int gripperId, int locationId, Throwable ex) throws Exception {
+        return operationResponseFallback(ex, String.format("Gripper %d at Location %d", gripperId, locationId));
+    }
+
+    @SuppressWarnings("unused")
+    private OperationResponse moveGripperFallback(int id, double x, double y, double z, Throwable ex) throws Exception {
+        return operationResponseFallback(ex, String.format("Move Gripper %d to (%.2f, %.2f, %.2f)", id, x, y, z));
+    }
+
+    @SuppressWarnings("unused")
+    private OperationResponse createOperationFallback(OperationRequest request, Throwable ex) throws Exception {
+        return operationResponseFallback(ex, String.format("Create Operation: Type=%s, Gripper=%d",
+            request.getOperationType(), request.getGripperId()));
+    }
+
+    @SuppressWarnings("unused")
+    private GripperStatusResponse getByIdFallback(int id, Throwable ex) throws Exception {
+        if (ex instanceof CallNotPermittedException) {
+            log.warn("Circuit Breaker is OPEN - Get Gripper {}", id);
+            OperationResponse error = new OperationResponse();
+            error.setErrorCode("SERVICE_UNAVAILABLE");
+            error.setMessage("Service is unavailable. Please try later.");
+            throw new OperationResponseException(error.getErrorCode(), error.getMessage());
+        } else if (ex instanceof OperationResponseException) {
+            log.warn("Circuit Breaker fallback - Get Gripper {}: {}", id, ex.getMessage());
+            throw (OperationResponseException) ex;  // Re-throw original
+        } else {
+            log.error("Circuit Breaker fallback - Unexpected Error: {}", ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private List<GripperStatusResponse> getAllGrippersFallback(Throwable ex) throws Exception {
+        if (ex instanceof CallNotPermittedException) {
+            log.warn("Circuit Breaker is OPEN - Get All Grippers");
+            throw new OperationResponseException("SERVICE_UNAVAILABLE", "Service is unavailable. Please try later.");
+        } else if (ex instanceof OperationResponseException) {
+            log.warn("Circuit Breaker fallback - Get All Grippers: {}", ex.getMessage());
+            throw (OperationResponseException) ex;
+        } else {
+            log.error("Circuit Breaker fallback - Get All Grippers: {}", ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private List<LocationResponse> getAvailableLocationsFallback(Throwable ex) throws Exception {
+        if (ex instanceof CallNotPermittedException) {
+            log.warn("Circuit Breaker is OPEN - Get Available Locations");
+            throw new OperationResponseException("SERVICE_UNAVAILABLE", "Service is unavailable. Please try later.");
+        } else if (ex instanceof OperationResponseException) {
+            log.warn("Circuit Breaker fallback - Get Available Locations: {}", ex.getMessage());
+            throw (OperationResponseException) ex;
+        } else {
+            log.error("Circuit Breaker fallback - Get Available Locations: {}", ex.getMessage(), ex);
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private IWarehouseGripperService getServicePort() {
+        try {
+            URL wsdlUrl = new URL(config.getWsdlUrl());
+            QName serviceName = new QName(
+                "http://tempuri.org/",
+                "WarehouseGripperService"
+            );
+
+            WarehouseGripperService service =
+                new WarehouseGripperService(wsdlUrl, serviceName);
+            IWarehouseGripperService port = service.getBasicHttpBindingIWarehouseGripperService();
     
-             WarehouseGripperService service =
-                 new WarehouseGripperService(wsdlUrl, serviceName);
-             IWarehouseGripperService port = service.getBasicHttpBindingIWarehouseGripperService();
-     
-             config.configureBinding((BindingProvider) port);
-             return port;
-         } catch (Exception e) {
-             log.error("Failed to create WCF service port", e);
-             throw new RuntimeException("WCF service connection failed", e);
-         }
+            config.configureBinding((BindingProvider) port);
+            return port;
+        } catch (Exception e) {
+            log.error("Failed to create WCF service port", e);
+            throw new RuntimeException("WCF service connection failed", e);
+        }
     }
 
     /**
      * Get status of a specific gripper
      */
+    @CircuitBreaker(name="get-gripper-by-id", fallbackMethod = "getByIdFallback")
     public GripperStatusResponse getGripperStatus(int gripperId) {
         log.info("Getting status for Gripper {}", gripperId);
 
@@ -186,8 +278,13 @@ public class WcfGripperServiceClient {
             sample.stop(getGripperStatusFailureTimer);
             getGripperStatusFailureCounter.increment();
             String errorMsg = unwrapJAXBElement(e.getFaultInfo().getErrorMessage());
-            log.error("WCF Service Fault: {}", errorMsg);
-            throw new RuntimeException("Failed to get gripper status: " + errorMsg);
+            log.error("✅ SOAP Fault caught - ErrorCode: {}, Message: {}",
+                unwrapJAXBElement(e.getFaultInfo().getErrorCode()), errorMsg);
+            throw new OperationResponseException(
+                unwrapJAXBElement(e.getFaultInfo().getErrorCode()),
+                unwrapJAXBElement(e.getFaultInfo().getStackTrace()),
+                unwrapJAXBElement(e.getFaultInfo().getErrorMessage())
+            );
         } catch (Exception e) {
             sample.stop(getGripperStatusFailureTimer);
             getGripperStatusFailureCounter.increment();
@@ -200,6 +297,7 @@ public class WcfGripperServiceClient {
     /**
      * Get status of all grippers
      */
+    @CircuitBreaker(name="get-all-grippers", fallbackMethod = "getAllGrippersFallback")
     public List<GripperStatusResponse> getAllGrippers() {
         log.info("Getting all grippers");
 
@@ -233,6 +331,7 @@ public class WcfGripperServiceClient {
     /**
      * Move gripper to position
      */
+    @CircuitBreaker(name="move-gripper", fallbackMethod = "moveGripperFallback")
     public OperationResponse moveGripper(int gripperId, double x, double y, double z) {
         log.info("Moving Gripper {} to ({}, {}, {})", gripperId, x, y, z);
 
@@ -257,7 +356,7 @@ public class WcfGripperServiceClient {
             sample.stop(moveGripperFailureTimer);
             moveGripperFailureCounter.increment();
 
-            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to move gripper");
+            throw new RuntimeException("Failed to move gripper", e);
         }
 
     }
@@ -265,6 +364,7 @@ public class WcfGripperServiceClient {
     /**
      * Pick load carrier from location
      */
+    @CircuitBreaker(name="pick-gripper", fallbackMethod = "pickPlaceOperationFallback")
     public OperationResponse pickLoadCarrier(int gripperId, int locationId) {
         log.info("Gripper {} picking from Location {}", gripperId, locationId);
 
@@ -290,7 +390,7 @@ public class WcfGripperServiceClient {
         } catch (Exception e) {
             sample.stop(pickLoadCarrierFailureTimer);
             pickLoadCarrierFailureCounter.increment();
-            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to pick load carrier");
+            throw new RuntimeException("Failed to pick Load Carrier", e);
         }
 
     }
@@ -298,6 +398,7 @@ public class WcfGripperServiceClient {
     /**
      * Place load carrier at location
      */
+    @CircuitBreaker(name="place-gripper", fallbackMethod = "pickPlaceOperationFallback")
     public OperationResponse placeLoadCarrier(int gripperId, int locationId) {
         log.info("Gripper {} placing at Location {}", gripperId, locationId);
 
@@ -323,7 +424,7 @@ public class WcfGripperServiceClient {
         } catch (Exception e) {
             sample.stop(placeLoadCarrierFailureTimer);
             placeLoadCarrierFailureCounter.increment();
-            throw new OperationResponseException("SERVICE_UNAVAILABLE", "WCF Service not available. Failed to place load carrier");
+            throw new RuntimeException("Failed to place Load Carrier", e);
         }
 
     }
@@ -331,7 +432,8 @@ public class WcfGripperServiceClient {
     /**
      * Create warehouse operation
      */
-    public OperationResponse createOperation(OperationRequest request) {
+    @CircuitBreaker(name="create-operation", fallbackMethod = "createOperationFallback")
+    public OperationResponse createOperation(OperationRequest request) throws Exception {
         log.info("Creating operation: Type={}, Gripper={}", request.getOperationType(), request.getGripperId());
 
         Timer.Sample sample = Timer.start(registry);
@@ -352,6 +454,10 @@ public class WcfGripperServiceClient {
 
             sample.stop(createOperationSuccessTimer);
             createOperationSuccessCounter.increment();
+
+            if (!wcfResult.isSuccess()) {
+                throw new OperationResponseException(this.unwrapJAXBElement(wcfResult.getErrorCode()), this.unwrapJAXBElement(wcfResult.getMessage()));
+            }
 
             return mapToOperationResponse(wcfResult);
         }
@@ -378,6 +484,7 @@ public class WcfGripperServiceClient {
     /**
      * Get available locations
      */
+    @CircuitBreaker(name="get-available-locations", fallbackMethod = "getAvailableLocationsFallback")
     public List<LocationResponse> getAvailableLocations() {
         log.info("Getting available locations");
 
